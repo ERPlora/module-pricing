@@ -4,14 +4,13 @@ from .models import PriceList, PriceRule
 
 @admin.register(PriceList)
 class PriceListAdmin(admin.ModelAdmin):
-    list_display = ['name', 'code', 'currency', 'is_active', 'start_date']
-    readonly_fields = ['id', 'hub_id', 'created_at', 'updated_at']
-    ordering = ['-created_at']
-
+    list_display = ['name', 'code', 'currency', 'is_active', 'start_date', 'created_at']
+    search_fields = ['name', 'code', 'currency']
+    readonly_fields = ['created_at', 'updated_at']
 
 @admin.register(PriceRule)
 class PriceRuleAdmin(admin.ModelAdmin):
-    list_display = ['price_list', 'name', 'rule_type', 'value', 'min_quantity']
-    readonly_fields = ['id', 'hub_id', 'created_at', 'updated_at']
-    ordering = ['-created_at']
+    list_display = ['price_list', 'name', 'rule_type', 'value', 'min_quantity', 'created_at']
+    search_fields = ['name', 'rule_type']
+    readonly_fields = ['created_at', 'updated_at']
 
