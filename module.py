@@ -34,3 +34,20 @@ PERMISSIONS = [
 'pricing.delete_pricerule',
 'pricing.manage_settings',
 ]
+
+ROLE_PERMISSIONS = {
+    "admin": ["*"],
+    "manager": [
+        "add_pricelist",
+        "add_pricerule",
+        "change_pricelist",
+        "change_pricerule",
+        "view_pricelist",
+        "view_pricerule",
+    ],
+    "employee": [
+        "add_pricelist",
+        "view_pricelist",
+        "view_pricerule",
+    ],
+}
