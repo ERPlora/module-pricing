@@ -3,6 +3,8 @@ Price Lists & Rules Module Views
 """
 from django.core.paginator import Paginator
 from django.db.models import Q, Count
+from django.http import HttpResponse
+from django.urls import reverse
 from django.shortcuts import get_object_or_404, render as django_render
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
@@ -113,6 +115,7 @@ def price_lists_list(request):
     }
 
 @login_required
+@htmx_view('pricing/pages/price_list_add.html', 'pricing/partials/price_list_add_content.html')
 def price_list_add(request):
     hub_id = request.session.get('hub_id')
     if request.method == 'POST':
@@ -130,10 +133,13 @@ def price_list_add(request):
         obj.start_date = start_date
         obj.end_date = end_date
         obj.save()
-        return _render_price_lists_list(request, hub_id)
-    return django_render(request, 'pricing/partials/panel_price_list_add.html', {})
+        response = HttpResponse(status=204)
+        response['HX-Redirect'] = reverse('pricing:price_lists_list')
+        return response
+    return {}
 
 @login_required
+@htmx_view('pricing/pages/price_list_edit.html', 'pricing/partials/price_list_edit_content.html')
 def price_list_edit(request, pk):
     hub_id = request.session.get('hub_id')
     obj = get_object_or_404(PriceList, pk=pk, hub_id=hub_id, is_deleted=False)
@@ -146,7 +152,7 @@ def price_list_edit(request, pk):
         obj.end_date = request.POST.get('end_date') or None
         obj.save()
         return _render_price_lists_list(request, hub_id)
-    return django_render(request, 'pricing/partials/panel_price_list_edit.html', {'obj': obj})
+    return {'obj': obj}
 
 @login_required
 @require_POST
