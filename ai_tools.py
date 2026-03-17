@@ -134,3 +134,125 @@ class AddPriceRule(AssistantTool):
             is_active=True,
         )
         return {"id": str(r.id), "name": r.name, "created": True}
+
+
+@register_tool
+class UpdatePriceList(AssistantTool):
+    name = "update_price_list"
+    description = "Update a price list's name, dates, or status."
+    module_id = "pricing"
+    required_permission = "pricing.change_pricelist"
+    requires_confirmation = True
+    parameters = {
+        "type": "object",
+        "properties": {
+            "price_list_id": {"type": "string", "description": "Price list ID"},
+            "name": {"type": "string", "description": "New name"},
+            "code": {"type": "string", "description": "Short code"},
+            "currency": {"type": "string", "description": "Currency code (e.g. EUR, USD)"},
+            "start_date": {"type": "string", "description": "Start date (YYYY-MM-DD)"},
+            "end_date": {"type": "string", "description": "End date (YYYY-MM-DD)"},
+            "is_active": {"type": "boolean", "description": "Active status"},
+        },
+        "required": ["price_list_id"],
+        "additionalProperties": False,
+    }
+
+    def execute(self, args, request):
+        from pricing.models import PriceList
+        try:
+            pl = PriceList.objects.get(id=args['price_list_id'])
+        except PriceList.DoesNotExist:
+            return {"error": "Price list not found"}
+        fields = []
+        for field in ('name', 'code', 'currency', 'start_date', 'end_date', 'is_active'):
+            if field in args:
+                setattr(pl, field, args[field])
+                fields.append(field)
+        if fields:
+            fields.append('updated_at')
+            pl.save(update_fields=fields)
+        return {"id": str(pl.id), "name": pl.name, "updated": True}
+
+
+@register_tool
+class DeletePriceList(AssistantTool):
+    name = "delete_price_list"
+    description = "Delete (soft-delete) a price list and its rules."
+    module_id = "pricing"
+    required_permission = "pricing.change_pricelist"
+    requires_confirmation = True
+    parameters = {
+        "type": "object",
+        "properties": {
+            "price_list_id": {"type": "string", "description": "Price list ID"},
+        },
+        "required": ["price_list_id"],
+        "additionalProperties": False,
+    }
+
+    def execute(self, args, request):
+        from pricing.models import PriceList
+        try:
+            pl = PriceList.objects.get(id=args['price_list_id'])
+        except PriceList.DoesNotExist:
+            return {"error": "Price list not found"}
+        name = pl.name
+        pl.is_deleted = True
+        pl.is_active = False
+        pl.save(update_fields=['is_deleted', 'is_active', 'updated_at'])
+        return {"deleted": True, "name": name}
+
+
+@register_tool
+class BulkSetProductPrices(AssistantTool):
+    name = "bulk_set_product_prices"
+    description = "Set fixed prices for multiple products on a price list. Creates or updates a rule per product."
+    module_id = "pricing"
+    required_permission = "pricing.add_pricerule"
+    requires_confirmation = True
+    parameters = {
+        "type": "object",
+        "properties": {
+            "price_list_id": {"type": "string", "description": "Price list ID"},
+            "prices": {
+                "type": "array",
+                "description": "List of product prices to set",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "product_name": {"type": "string", "description": "Product name (used as rule name)"},
+                        "price": {"type": "string", "description": "Fixed price for this product"},
+                    },
+                    "required": ["product_name", "price"],
+                    "additionalProperties": False,
+                },
+            },
+        },
+        "required": ["price_list_id", "prices"],
+        "additionalProperties": False,
+    }
+
+    def execute(self, args, request):
+        from decimal import Decimal
+        from pricing.models import PriceList, PriceRule
+        try:
+            pl = PriceList.objects.get(id=args['price_list_id'])
+        except PriceList.DoesNotExist:
+            return {"error": "Price list not found"}
+        created = updated = 0
+        for item in args['prices']:
+            rule, was_created = PriceRule.objects.get_or_create(
+                price_list=pl,
+                name=item['product_name'],
+                defaults={'rule_type': 'fixed', 'value': Decimal(item['price']), 'is_active': True},
+            )
+            if not was_created:
+                rule.value = Decimal(item['price'])
+                rule.rule_type = 'fixed'
+                rule.is_active = True
+                rule.save(update_fields=['value', 'rule_type', 'is_active', 'updated_at'])
+                updated += 1
+            else:
+                created += 1
+        return {"price_list": pl.name, "created": created, "updated": updated, "total": created + updated}
