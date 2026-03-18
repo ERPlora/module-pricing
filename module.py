@@ -2,8 +2,8 @@ from django.utils.translation import gettext_lazy as _
 
 MODULE_ID = 'pricing'
 MODULE_NAME = _('Price Lists & Rules')
-MODULE_VERSION = '1.0.0'
-MODULE_ICON = 'pricetag-outline'
+MODULE_VERSION = '1.0.1'
+MODULE_ICON = 'material:price_check'
 MODULE_DESCRIPTION = _('Price lists, discount rules and pricing strategies')
 MODULE_AUTHOR = 'ERPlora'
 MODULE_CATEGORY = 'commerce'
